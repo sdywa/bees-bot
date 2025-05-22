@@ -1,0 +1,7 @@
+__pycache__/
+*.docx
+*.png
+/temp
+test*
+/venv
+config.json
