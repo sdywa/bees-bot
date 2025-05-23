@@ -1,14 +1,18 @@
 import json
+import sys
+sys.path.append("..")
 
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 
 from .commands import commands
+from models import Users
 
 
 class Bot:
     def __init__(self, token):
         self.token = token
+
         self.session = vk_api.VkApi(token=token)
         self.vk = self.session.get_api()
         self.longpoll = VkLongPoll(self.session)
@@ -21,9 +25,13 @@ class Bot:
         for event in self.longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
-                    msg = event.text.lower()
                     id = event.user_id
+                    if Users.find(id) is None:
+                        Users.add({
+                            'id': id
+                        })
 
+                    msg = event.text.lower()
                     if not self.is_member(id):
                         commands['greet'](self.vk, event)
                     else: 

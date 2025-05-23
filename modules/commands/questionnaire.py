@@ -20,7 +20,7 @@ def command(vk, event, stage):
         keyboard.add_button('🔮 Тени', color=VkKeyboardColor.SECONDARY)
 
         keyboard.add_line() 
-        keyboard.add_button('🏔 Клан падающей воды', color=VkKeyboardColor.SECONDARY)
+        keyboard.add_button('🗻 Клан падающей воды', color=VkKeyboardColor.SECONDARY)
         keyboard.add_button('❄️ Северный клан', color=VkKeyboardColor.SECONDARY)
     elif stage == 2:
         message = 'Приятно познакомиться, пчёлка!'
