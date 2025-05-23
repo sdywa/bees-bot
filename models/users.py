@@ -8,11 +8,26 @@ class Users(BaseModel):
     catwar_id = IntegerField(null=True)
     stage = IntegerField(null=False, default=0)
 
+    @staticmethod
     def add(user_data):
         db.connect()
         user = Users.create(**user_data)
         db.close()
+        return user
 
+    @staticmethod
+    def edit(id, new_data):
+        user = Users.find(id)
+
+        db.connect()
+        for key in new_data:
+            setattr(user, key, new_data[key])
+
+        user.save()
+        db.close()
+        return user
+
+    @staticmethod
     def find(id):
         db.connect()
         user = None

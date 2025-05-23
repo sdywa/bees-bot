@@ -18,25 +18,23 @@ class Bot:
         self.longpoll = VkLongPoll(self.session)
 
         self.group_id = 155268321
-        self.i = 0
 
 
-    def run(self):
+    async def run(self):
         for event in self.longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
                     id = event.user_id
-                    if Users.find(id) is None:
-                        Users.add({
+                    user = Users.find(id)
+                    if user is None:
+                        user = Users.add({
                             'id': id
                         })
 
-                    msg = event.text.lower()
                     if not self.is_member(id):
                         commands['greet'](self.vk, event)
                     else: 
-                        commands['questionnaire'](self.vk, event, self.i)
-                        self.i += 1
+                        Users.edit(id, await commands['questionnaire'](self.vk, event, user))
 
 
     def is_member(self, user_id):

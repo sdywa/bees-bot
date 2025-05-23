@@ -1,3 +1,4 @@
+import asyncio
 import sys
 import os
 import json
@@ -24,7 +25,6 @@ def input_value(text, is_numeric, default=None):
         text = f'{text} (значение по умолчанию: "{default}")'
     text += ":"
     while not value or not valid_func(value):
-        print(text)
         value = input()
 
         if default is not None and not value:
@@ -70,6 +70,10 @@ def generate_config(file_path):
     return config
 
 
+def handle_sigint(sig, frame):
+    print('Interrupted')
+    sys.exit(0)
+
 if __name__ == "__main__":
     try:
         BASE_PATH = sys._MEIPASS
@@ -83,4 +87,4 @@ if __name__ == "__main__":
     print("Running...")
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     server = Bot(config["token"])
-    server.run()
+    asyncio.run(server.run())
