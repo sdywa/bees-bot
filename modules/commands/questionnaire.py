@@ -9,6 +9,27 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 from models.positions import Positions 
 
 
+clans = {
+    'loner': '🏠 Одиночки',
+    'domestic': '💤 Домашние',
+    'thunder': '⚡ Гроза',
+    'wind': '💨 Ветер',
+    'river': '🌊 Река',
+    'shadow': '🔮 Тени',
+    'kpv': '🗻 Клан падающей воды',
+    'nordgeist': '❄️ Северный клан',
+}
+
+positions = {
+    'carriers': '🍯 Медоносец',
+    'defenders': '⚔️ Защитник',
+    'creators': '🎨 Творец',
+    'squads': '🍁 В отрядах ОВП',
+}
+
+def clean_text(text):
+    return re.sub('[^0-9а-яА-Я]', '', text).lower()
+
 def ask_id():
     message = '''
 Привет! Давай знакомиться. Я то-то то-то, со мной можно делать то-то то-то.
@@ -19,29 +40,39 @@ def ask_id():
 def ask_clan(): 
     message = 'В каком племени обитаешь?'
     keyboard = VkKeyboard(one_time=True)
-    keyboard.add_button('🏠 Одиночки', color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button(clans['loner'], color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button(clans['domestic'], color=VkKeyboardColor.PRIMARY)
     
     keyboard.add_line() 
-    keyboard.add_button('⚡ Гроза', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('💨 Ветер', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('🌊 Река', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('🔮 Тени', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['thunder'], color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['wind'], color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['river'], color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['shadow'], color=VkKeyboardColor.SECONDARY)
 
     keyboard.add_line() 
-    keyboard.add_button('🗻 Клан падающей воды', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('❄️ Северный клан', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['kpv'], color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(clans['nordgeist'], color=VkKeyboardColor.SECONDARY)
 
     return message, keyboard
 
-def ask_position(): 
+def ask_position(users_positions): 
     message = 'Какие должности ты занимаешь?'
     keyboard = VkKeyboard(one_time=True)  
-    keyboard.add_button('🍯 Медоносец', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('⚔️ Защитник', color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button('🎨 Творец', color=VkKeyboardColor.SECONDARY)
+    for pos in ['carriers', 'defenders', 'creators']:
+        keyboard.add_button(
+            positions[pos], 
+            color=VkKeyboardColor.PRIMARY 
+                  if clean_text(positions[pos]) in users_positions 
+                  else VkKeyboardColor.SECONDARY
+        )
     
     keyboard.add_line() 
-    keyboard.add_button('🍁 В отрядах ОВП', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button(
+        positions['squads'], 
+        color=VkKeyboardColor.PRIMARY 
+              if clean_text(positions['squads']) in users_positions 
+              else VkKeyboardColor.SECONDARY
+    )
 
     return message, keyboard
 
@@ -80,7 +111,7 @@ async def command(vk, event, user):
     keyboard = None
     updates = {}
     skip = False
-    text = re.sub('[^0-9а-яА-Я]', '', event.message).lower()
+    text = clean_text(event.message)
 
     if user.stage == 0:
         message = ask_id()
@@ -91,35 +122,42 @@ async def command(vk, event, user):
         if await get_name(id) is not None:
             updates['stage'] = user.stage + 1
             updates['catwar_id'] = id
-            if await get_universe(id) == 'Озёрная вселенная':
-                message, keyboard = ask_clan()
-            else:
-                skip = True
-                user.catwar_id = id
+            skip = True
         else: 
             message = ask_id()
 
     if user.stage == 2 or (user.stage == 1 and skip):
+        skip = False
+        id = re.sub('[^0-9]', '', text)
+        if text in map(lambda x: clean_text(x), clans.values()) and \
+           await get_universe(id) != 'Озёрная вселенная':
+            skip = True
+            updates['stage'] = user.stage + 1
+        else:
+            message, keyboard = ask_clan()
+
+    if user.stage == 3 or ((user.stage == 1 or user.stage == 2) and skip):
+        skip = False
         if text == 'дальше':
             skip = True
+            updates['stage'] = user.stage + 1
         else:
-            message, keyboard = ask_position()
-
             user_positions = Positions.find_all(user.id)
-            available = ['медоносец', 'защитник', 'творец', 'в отрядах овп']
-            if any(map(lambda pos: pos.user_id == user.id, user_positions)):
+            if any(map(lambda pos: pos.title == text, user_positions)):
                 [Positions.remove(pos.id) for pos in user_positions if pos.title == text]
                 message = f'Должность {text} удалена!'
-            elif text in available:
+            elif text in map(lambda x: clean_text(x), positions.values()):
                 Positions.add({ 'user': user, 'title': text })
                 message = f'Должность {text} добавлена!'
 
-            if len(Positions.find_all(user.id)) > 0:
+            user_positions = Positions.find_all(user.id)
+            message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+            if len(user_positions) > 0:
                 keyboard.add_line() 
                 keyboard.add_button('Дальше', color=VkKeyboardColor.POSITIVE)
 
 
-    if user.stage == 3 or (user.stage == 2 and skip):
+    if user.stage == 4 or (user.stage == 3 and skip):
         message = f'Приятно познакомиться, {await get_name(user.catwar_id)}!'
 
     if keyboard is None:

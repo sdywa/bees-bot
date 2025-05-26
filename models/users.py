@@ -1,4 +1,4 @@
-from peewee import CharField, IntegerField, FloatField, DateField
+from peewee import CharField, IntegerField, BooleanField
 
 from .base import BaseModel, db
 
@@ -6,6 +6,7 @@ from .base import BaseModel, db
 class Users(BaseModel):
     catwar_id = IntegerField(null=True)
     stage = IntegerField(null=False, default=0)
+    loner = BooleanField(default=False)
 
     @staticmethod
     def add(user_data):
