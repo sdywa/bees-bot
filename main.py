@@ -25,6 +25,7 @@ def input_value(text, is_numeric, default=None):
         text = f'{text} (значение по умолчанию: "{default}")'
     text += ":"
     while not value or not valid_func(value):
+        print(text)
         value = input()
 
         if default is not None and not value:

@@ -1,5 +1,13 @@
+import sys
+sys.path.append("../..")
+
+import re
+
 from playwright.async_api import async_playwright
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
+
+from models.positions import Positions 
+
 
 def ask_id():
     message = '''
@@ -22,6 +30,18 @@ def ask_clan():
     keyboard.add_line() 
     keyboard.add_button('🗻 Клан падающей воды', color=VkKeyboardColor.SECONDARY)
     keyboard.add_button('❄️ Северный клан', color=VkKeyboardColor.SECONDARY)
+
+    return message, keyboard
+
+def ask_position(): 
+    message = 'Какие должности ты занимаешь?'
+    keyboard = VkKeyboard(one_time=True)  
+    keyboard.add_button('🍯 Медоносец', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button('⚔️ Защитник', color=VkKeyboardColor.SECONDARY)
+    keyboard.add_button('🎨 Творец', color=VkKeyboardColor.SECONDARY)
+    
+    keyboard.add_line() 
+    keyboard.add_button('🍁 В отрядах ОВП', color=VkKeyboardColor.SECONDARY)
 
     return message, keyboard
 
@@ -59,25 +79,47 @@ async def command(vk, event, user):
     message = ''
     keyboard = None
     updates = {}
-    welcome = False
+    skip = False
+    text = re.sub('[^0-9а-яА-Я]', '', event.message).lower()
 
     if user.stage == 0:
         message = ask_id()
         updates['stage'] = user.stage + 1
         
     if user.stage == 1:
-        if await get_name(event.message) is not None:
+        id = re.sub('[^0-9]', '', text)
+        if await get_name(id) is not None:
             updates['stage'] = user.stage + 1
-            updates['catwar_id'] = event.text
-            if await get_universe(event.message) == 'Озёрная вселенная':
+            updates['catwar_id'] = id
+            if await get_universe(id) == 'Озёрная вселенная':
                 message, keyboard = ask_clan()
             else:
-                welcome = True
-                user.catwar_id = event.message
+                skip = True
+                user.catwar_id = id
         else: 
             message = ask_id()
 
-    if user.stage == 2 or welcome:
+    if user.stage == 2 or (user.stage == 1 and skip):
+        if text == 'дальше':
+            skip = True
+        else:
+            message, keyboard = ask_position()
+
+            user_positions = Positions.find_all(user.id)
+            available = ['медоносец', 'защитник', 'творец', 'в отрядах овп']
+            if any(map(lambda pos: pos.user_id == user.id, user_positions)):
+                [Positions.remove(pos.id) for pos in user_positions if pos.title == text]
+                message = f'Должность {text} удалена!'
+            elif text in available:
+                Positions.add({ 'user': user, 'title': text })
+                message = f'Должность {text} добавлена!'
+
+            if len(Positions.find_all(user.id)) > 0:
+                keyboard.add_line() 
+                keyboard.add_button('Дальше', color=VkKeyboardColor.POSITIVE)
+
+
+    if user.stage == 3 or (user.stage == 2 and skip):
         message = f'Приятно познакомиться, {await get_name(user.catwar_id)}!'
 
     if keyboard is None:

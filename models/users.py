@@ -4,7 +4,6 @@ from .base import BaseModel, db
 
 
 class Users(BaseModel):
-    id = IntegerField(null=False, primary_key=True)
     catwar_id = IntegerField(null=True)
     stage = IntegerField(null=False, default=0)
 
