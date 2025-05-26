@@ -24,11 +24,11 @@ positions = {
     'carriers': '🍯 Медоносец',
     'defenders': '⚔️ Защитник',
     'creators': '🎨 Творец',
-    'squads': '🍁 В отрядах ОВП',
+    'squads': '🍁 В отрядах (ОВП)',
 }
 
 def clean_text(text):
-    return re.sub('[^0-9а-яА-Я]', '', text).lower()
+    return re.sub('[^0-9а-яА-Я ]', '', text).lower().strip()
 
 def ask_id():
     message = '''
@@ -116,28 +116,41 @@ async def command(vk, event, user):
     if user.stage == 0:
         message = ask_id()
         updates['stage'] = user.stage + 1
+        skip = True
         
     if user.stage == 1:
+        skip_prev = skip
+        skip = False
+
         id = re.sub('[^0-9]', '', text)
         if await get_name(id) is not None:
             updates['stage'] = user.stage + 1
             updates['catwar_id'] = id
             skip = True
-        else: 
+        elif skip_prev: 
             message = ask_id()
+        else:
+            message = 'Некорректный айди! Отправь, пожалуйста, корректный.'
 
     if user.stage == 2 or (user.stage == 1 and skip):
+        skip_prev = skip
         skip = False
+
         id = re.sub('[^0-9]', '', text)
         if text in map(lambda x: clean_text(x), clans.values()) and \
            await get_universe(id) != 'Озёрная вселенная':
             skip = True
             updates['stage'] = user.stage + 1
+        elif skip_prev:
+            message, keyboard = ask_clan()
         else:
             message, keyboard = ask_clan()
+            message = 'Не могу понять племя, выбери из предложенных вариантов.'
 
     if user.stage == 3 or ((user.stage == 1 or user.stage == 2) and skip):
+        skip_prev = skip
         skip = False
+
         if text == 'дальше':
             skip = True
             updates['stage'] = user.stage + 1
@@ -149,9 +162,15 @@ async def command(vk, event, user):
             elif text in map(lambda x: clean_text(x), positions.values()):
                 Positions.add({ 'user': user, 'title': text })
                 message = f'Должность {text} добавлена!'
+            elif not skip_prev:
+                message = 'Не могу понять должность, выбери из предложенных вариантов.'
 
             user_positions = Positions.find_all(user.id)
-            message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+            new_message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+
+            if message == '':
+                message = new_message
+
             if len(user_positions) > 0:
                 keyboard.add_line() 
                 keyboard.add_button('Дальше', color=VkKeyboardColor.POSITIVE)
