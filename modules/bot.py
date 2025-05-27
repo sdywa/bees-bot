@@ -1,6 +1,4 @@
 import json
-import sys
-sys.path.append("..")
 
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
