@@ -1,4 +1,3 @@
-import asyncio
 import sys
 import os
 import json
@@ -88,4 +87,4 @@ if __name__ == "__main__":
     print("Running...")
     signal.signal(signal.SIGINT, signal.SIG_DFL)
     server = Bot(config["token"])
-    asyncio.run(server.run())
+    server.run()

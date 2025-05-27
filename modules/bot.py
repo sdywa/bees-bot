@@ -18,7 +18,7 @@ class Bot:
         self.group_id = 155268321
 
 
-    async def run(self):
+    def run(self):
         for event in self.longpoll.listen():
             if event.type == VkEventType.MESSAGE_NEW:
                 if event.to_me:
@@ -32,7 +32,7 @@ class Bot:
                     if not self.is_member(id):
                         commands['greet'](self.vk, event)
                     else: 
-                        Users.edit(id, await commands['questionnaire'](self.vk, event, user))
+                        Users.edit(id, commands['questionnaire'](self.vk, event, user))
 
 
     def is_member(self, user_id):
