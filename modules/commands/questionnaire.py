@@ -7,25 +7,61 @@ from models.positions import Positions
 
 
 clans = {
-    'loner': '🏠 Одиночки',
-    'domestic': '💤 Домашние',
-    'thunder': '⚡ Гроза',
-    'wind': '💨 Ветер',
-    'river': '🌊 Река',
-    'shadow': '🔮 Тени',
-    'kpv': '🗻 Клан падающей воды',
-    'nordgeist': '❄️ Северный клан',
+    'loner': {
+        'emoji': '🏠',
+        'title': 'Одиночки'
+    },
+    'domestic': {
+        'emoji': '💤',
+        'title': 'Домашние'
+    },
+    'thunder': {
+        'emoji': '⚡',
+        'title': 'Гроза'
+    },
+    'wind': {
+        'emoji': '💨',
+        'title': 'Ветер'
+    },
+    'river': {
+        'emoji': '🌊',
+        'title': 'Река'
+    },
+    'shadow': {
+        'emoji': '🔮',
+        'title': 'Тени'
+    },
+    'kpv': {
+        'emoji': '🗻',
+        'title': 'Клан падающей воды'
+    },
+    'nordgeist': {
+        'emoji': '❄️',
+        'title': 'Северный клан'
+    },
 }
 
 positions = {
-    'carriers': '🍯 Медоносец',
-    'defenders': '⚔️ Защитник',
-    'creators': '🎨 Творец',
-    'squads': '🍁 В отрядах (ОВП)',
+    'carriers': {
+        'emoji': '🍯',
+        'title': 'Медоносец'
+    },
+    'defenders': {
+        'emoji': '⚔️',
+        'title': 'Защитник'
+    },
+    'creators': {
+        'emoji': '🎨',
+        'title': 'Творец'
+    },
+    'squads': {
+        'emoji': '🍁',
+        'title': 'В отрядах (ОВП)'
+    },
 }
 
 def clean_text(text):
-    return re.sub('[^0-9а-яА-Я ]', '', text).lower().strip()
+    return re.sub('[^0-9а-яА-Я ()]', '', text).lower().strip()
 
 def ask_id():
     message = '''
@@ -37,19 +73,16 @@ def ask_id():
 def ask_clan(): 
     message = 'В каком племени обитаешь?'
     keyboard = VkKeyboard(one_time=True)
-    keyboard.add_button(clans['loner'], color=VkKeyboardColor.POSITIVE)
-    keyboard.add_button(clans['domestic'], color=VkKeyboardColor.PRIMARY)
+
+    keyboard.add_button(' '.join([clans['loner']['emoji'], clans['loner']['title']]), color=VkKeyboardColor.POSITIVE)
+    keyboard.add_button(' '.join([clans['domestic']['emoji'], clans['domestic']['title']]), color=VkKeyboardColor.PRIMARY)
+
+    for clan in [None, 'thunder', 'wind', 'river', 'shadow', None, 'kpv', 'nordgeist']:
+        if clan is None: 
+            keyboard.add_line() 
+        else:
+            keyboard.add_button(' '.join([clans[clan]['emoji'], clans[clan]['title']]), color=VkKeyboardColor.SECONDARY)
     
-    keyboard.add_line() 
-    keyboard.add_button(clans['thunder'], color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button(clans['wind'], color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button(clans['river'], color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button(clans['shadow'], color=VkKeyboardColor.SECONDARY)
-
-    keyboard.add_line() 
-    keyboard.add_button(clans['kpv'], color=VkKeyboardColor.SECONDARY)
-    keyboard.add_button(clans['nordgeist'], color=VkKeyboardColor.SECONDARY)
-
     return message, keyboard
 
 def ask_position(users_positions): 
@@ -57,17 +90,17 @@ def ask_position(users_positions):
     keyboard = VkKeyboard(one_time=True)  
     for pos in ['carriers', 'defenders', 'creators']:
         keyboard.add_button(
-            positions[pos], 
+            ' '.join([positions[pos]['emoji'], positions[pos]['title']]),
             color=VkKeyboardColor.PRIMARY 
-                  if clean_text(positions[pos]) in users_positions 
+                  if positions[pos]['title'] in users_positions 
                   else VkKeyboardColor.SECONDARY
         )
     
     keyboard.add_line() 
     keyboard.add_button(
-        positions['squads'], 
+        ' '.join([positions['squads']['emoji'], positions['squads']['title']]),
         color=VkKeyboardColor.PRIMARY 
-              if clean_text(positions['squads']) in users_positions 
+              if positions['squads']['title'] in users_positions 
               else VkKeyboardColor.SECONDARY
     )
 
@@ -133,11 +166,16 @@ async def command(vk, event, user):
         skip_prev = skip
         skip = False
 
-        id = re.sub('[^0-9]', '', text)
-        if text in map(lambda x: clean_text(x), clans.values()) and \
-           await get_universe(id) != 'Озёрная вселенная':
+        id = user.catwar_id
+        if id is None:
+            id = re.sub('[^0-9]', '', text)
+        if await get_universe(id) != 'Озёрная вселенная':
             skip = True
             updates['stage'] = user.stage + 1
+        elif text in map(lambda x: x['title'].lower(), clans.values()):
+            skip = True
+            updates['stage'] = user.stage + 1
+            updates['loner'] = text == 'одиночки'
         elif skip_prev:
             message, keyboard = ask_clan()
         else:
@@ -149,16 +187,23 @@ async def command(vk, event, user):
         skip = False
 
         if text == 'дальше':
-            skip = True
-            updates['stage'] = user.stage + 1
-        else:
             user_positions = Positions.find_all(user.id)
-            if any(map(lambda pos: pos.title == text, user_positions)):
-                [Positions.remove(pos.id) for pos in user_positions if pos.title == text]
-                message = f'Должность {text} удалена!'
-            elif text in map(lambda x: clean_text(x), positions.values()):
-                Positions.add({ 'user': user, 'title': text })
-                message = f'Должность {text} добавлена!'
+            if len(user_positions) > 0:
+                skip = True
+                updates['stage'] = user.stage + 1
+            else:
+                _, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+                message = 'Выберите минимум одну должность!' 
+        else:
+            picked = [pos['title'] for pos in positions.values() if pos['title'].lower() == text]
+            user_positions = Positions.find_all(user.id)
+
+            if len(picked) > 0 and picked[0] in map(lambda pos: pos.title, user_positions):
+                [Positions.remove(pos.id) for pos in user_positions if pos.title == picked[0]]
+                message = f'Должность "{picked[0]}" убрана!'
+            elif len(picked) > 0:
+                Positions.add({ 'user': user, 'title': picked[0] })
+                message = f'Должность "{picked[0]}" добавлена!'
             elif not skip_prev:
                 message = 'Не могу понять должность, выбери из предложенных вариантов.'
 
@@ -174,7 +219,11 @@ async def command(vk, event, user):
 
 
     if user.stage == 4 or (user.stage == 3 and skip):
-        message = f'Приятно познакомиться, {await get_name(user.catwar_id)}!'
+        message = f'''
+Приятно познакомиться, {await get_name(user.catwar_id)}!
+Статус: {'одиночка' if user.loner else 'племенной'}
+Должности: {', '.join(sorted(map(lambda x: x.title, Positions.find_all(user.id))))}
+'''
 
     if keyboard is None:
         vk.messages.send(user_id=event.user_id, message=message, random_id=0)
