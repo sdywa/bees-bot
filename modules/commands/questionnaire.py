@@ -92,7 +92,10 @@ def ask_clan():
     
     return message, keyboard
 
-def ask_position(user_positions): 
+def ask_position(user): 
+    user_positions = Positions.find_all(user.id)
+    user_positions = list(map(lambda x: x.title, user_positions))
+
     message = 'Какие должности ты занимаешь?'
     keyboard = VkKeyboard(one_time=True)  
     for pos in ['carriers', 'defenders', 'creators']:
@@ -121,7 +124,7 @@ def get_name(id):
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
         page = browser.new_page()
-        page.goto(f'http://catwar.net/cat{id}')
+        page.goto(f'https://catwar.net/cat{id}')
         page.wait_for_selector('body')
 
         name = None
@@ -136,7 +139,7 @@ def get_universe(id):
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
         page = browser.new_page()
-        page.goto(f'http://catwar.net/cat{id}')
+        page.goto(f'https://catwar.net/cat{id}')
         page.wait_for_selector('body')
 
         universe = None
@@ -171,8 +174,7 @@ def command(vk, event, user):
             message = ask_id()
         elif get_name(id) is not None:
             if get_universe(id) != 'Озёрная вселенная':
-                user_positions = Positions.find_all(user.id)
-                message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+                message, keyboard = ask_position(user)
                 updates['stage'] = 3
             else:
                 message, keyboard = ask_clan()
@@ -191,8 +193,7 @@ def command(vk, event, user):
         if back:
             message, keyboard = ask_clan()
         elif text in map(lambda x: x['title'].lower(), clans.values()):
-            user_positions = Positions.find_all(user.id)
-            message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+            message, keyboard = ask_position(user)
             updates['stage'] = 3
             updates['loner'] = text == 'одиночки'
         else:
@@ -201,15 +202,14 @@ def command(vk, event, user):
 
     if user.stage == 3:
         if back:
-            user_positions = Positions.find_all(user.id)
-            message, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+            message, keyboard = ask_position(user)
         elif text == 'дальше':
             user_positions = Positions.find_all(user.id)
             if len(user_positions) > 0:
                 updates['stage'] = 4
                 user.stage = updates['stage']
             else:
-                _, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+                _, keyboard = ask_position(user)
                 message = 'Выберите минимум одну должность!' 
         else:
             picked = [pos['title'] for pos in positions.values() if pos['title'].lower() == text]
@@ -224,8 +224,7 @@ def command(vk, event, user):
             else:
                 message = 'Не могу понять должность, выбери из предложенных вариантов.'
 
-            user_positions = Positions.find_all(user.id)
-            _, keyboard = ask_position(list(map(lambda x: x.title, user_positions)))
+            _, keyboard = ask_position(user)
 
     if user.stage == 4:
         message = f'''
