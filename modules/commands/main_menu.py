@@ -1,7 +1,5 @@
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
-from models.positions import Positions 
-
 
 positions = {
     'carriers': {
@@ -28,6 +26,7 @@ positions = {
 
 def get_main_menu_keyboard():
     keyboard = VkKeyboard(one_time=True)  
+    keyboard.add_button('Мои данные', color=VkKeyboardColor.PRIMARY)
     keyboard.add_button('Обновить', color=VkKeyboardColor.POSITIVE)
     keyboard.add_button('Об активности', color=VkKeyboardColor.PRIMARY)
 
@@ -51,8 +50,7 @@ def get_main_menu_keyboard():
 def command(vk, event, user):
     message = f'''
 Статус: {'🟢' if True else '🔴'}
-Кошелёк: {0} 🐝
-Должности: {', '.join(sorted(map(lambda x: x.title, Positions.find_all(user.id))))}'''
+Кошелёк: {0} 🐝'''
 
     
     keyboard = get_main_menu_keyboard()

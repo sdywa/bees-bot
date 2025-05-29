@@ -33,16 +33,21 @@ class Bot:
                     if not self.is_member(id):
                         commands['greet'](self.vk, event)
                     else: 
+                        text = clean_text(event.message)
+                        if text == 'изменить данные':
+                            user = Users.edit(id, { 'stage': 0 })
+
                         if user.stage < 4:
                             user = Users.edit(id, commands['questionnaire'](self.vk, event, user))
 
                         if user.stage == 4:
-                            text = clean_text(event.message)
                             if text == 'я прочитал':
                                 user = Users.edit(id, { 'approved': True })
 
                             if not user.approved or text == 'об активности':
                                 commands['about'](self.vk, event, user)
+                            elif text == 'мои данные':
+                                commands['info'](self.vk, event, user)
                             elif user.approved:
                                 commands['main_menu'](self.vk, event, user)
                         

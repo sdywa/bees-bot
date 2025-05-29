@@ -68,12 +68,13 @@ positions = {
     },
 }
 
-def ask_id():
-    message = '''
+def ask_id(user):
+    if user.approved:
+        return 'Подскажи айди своего персонажа.'
+    return '''
 Привет! Давай знакомиться. Я то-то то-то, со мной можно делать то-то то-то.
 Подскажи айди своего персонажа.
     '''
-    return message
 
 def ask_clan(): 
     message = 'В каком племени обитаешь?'
@@ -163,13 +164,13 @@ def command(vk, event, user):
         back = True
 
     if user.stage == 0:
-        message = ask_id()
+        message = ask_id(user)
         updates['stage'] = 1
         
     if user.stage == 1:
         id = re.sub('[^0-9]', '', text)
         if back:
-            message = ask_id()
+            message = ask_id(user)
         elif get_name(id) is not None:
             if get_universe(id) != 'Озёрная вселенная':
                 message, keyboard = ask_position(user)
@@ -205,7 +206,10 @@ def command(vk, event, user):
             user_positions = Positions.find_all(user.id)
             if len(user_positions) > 0:
                 updates['stage'] = 4
-                message = f'Приятно познакомиться, {get_name(user.catwar_id)}!'
+                if user.approved:
+                    message = 'Информация обновлена!'
+                else:
+                    message = f'Приятно познакомиться, {get_name(user.catwar_id)}!'
             else:
                 _, keyboard = ask_position(user)
                 message = 'Выберите минимум одну должность!' 
