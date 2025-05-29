@@ -3,6 +3,7 @@ import re
 from playwright.sync_api import sync_playwright
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
+from helpers import clean_text
 from models.positions import Positions 
 
 
@@ -67,9 +68,6 @@ positions = {
     },
 }
 
-def clean_text(text):
-    return re.sub('[^0-9а-яА-Я ()]', '', text).lower().strip()
-
 def ask_id():
     message = '''
 Привет! Давай знакомиться. Я то-то то-то, со мной можно делать то-то то-то.
@@ -124,7 +122,7 @@ def get_name(id):
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
         page = browser.new_page()
-        page.goto(f'https://catwar.net/cat{id}')
+        page.goto(f'https://catwar.su/cat{id}')
         page.wait_for_selector('body')
 
         name = None
@@ -139,7 +137,7 @@ def get_universe(id):
     with sync_playwright() as p:
         browser = p.firefox.launch(headless=True)
         page = browser.new_page()
-        page.goto(f'https://catwar.net/cat{id}')
+        page.goto(f'https://catwar.su/cat{id}')
         page.wait_for_selector('body')
 
         universe = None
@@ -207,7 +205,7 @@ def command(vk, event, user):
             user_positions = Positions.find_all(user.id)
             if len(user_positions) > 0:
                 updates['stage'] = 4
-                user.stage = updates['stage']
+                message = f'Приятно познакомиться, {get_name(user.catwar_id)}!'
             else:
                 _, keyboard = ask_position(user)
                 message = 'Выберите минимум одну должность!' 
@@ -225,13 +223,6 @@ def command(vk, event, user):
                 message = 'Не могу понять должность, выбери из предложенных вариантов.'
 
             _, keyboard = ask_position(user)
-
-    if user.stage == 4:
-        message = f'''
-Приятно познакомиться, {get_name(user.catwar_id)}!
-Статус: {'одиночка' if user.loner else 'племенной'}
-Должности: {', '.join(sorted(map(lambda x: x.title, Positions.find_all(user.id))))}
-'''
 
     if keyboard is None:
         vk.messages.send(user_id=event.user_id, message=message, random_id=0)

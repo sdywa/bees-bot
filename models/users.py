@@ -7,6 +7,7 @@ class Users(BaseModel):
     catwar_id = IntegerField(null=True)
     stage = IntegerField(null=False, default=0)
     loner = BooleanField(default=False)
+    approved = BooleanField(default=False)
 
     @staticmethod
     def add(user_data):

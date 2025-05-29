@@ -4,6 +4,7 @@ import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 
 from .commands import commands
+from helpers import clean_text
 from models import Users
 
 
@@ -32,7 +33,19 @@ class Bot:
                     if not self.is_member(id):
                         commands['greet'](self.vk, event)
                     else: 
-                        Users.edit(id, commands['questionnaire'](self.vk, event, user))
+                        if user.stage < 4:
+                            user = Users.edit(id, commands['questionnaire'](self.vk, event, user))
+
+                        if user.stage == 4:
+                            text = clean_text(event.message)
+                            if text == 'я прочитал':
+                                user = Users.edit(id, { 'approved': True })
+
+                            if not user.approved or text == 'об активности':
+                                commands['about'](self.vk, event, user)
+                            elif user.approved:
+                                commands['main_menu'](self.vk, event, user)
+                        
 
 
     def is_member(self, user_id):
